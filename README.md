@@ -10,7 +10,7 @@ The work intented to follow the cours of PennState about DataMining (https://onl
 It is achieve a better accuracy over the test data compare with the course's example. (Analysis can be seen in the excel sheet)
 
 Accuracy (50% treshold)=72.6 % |||
-Accuracy (755 treshold)=69.0 %
+Accuracy (75% treshold)=69.0 %
 
 About the code: 
 The work is not complety and it can be improve a lot. But it was an opportunity to test and try plots, tools and different analysis with real data.
