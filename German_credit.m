@@ -17,7 +17,7 @@ M = csvread('csvnew.csv',1,0);
 [num,text,raw] = xlsread('german_credit_headers.xlsx');
 X = M(:,2:end);
 Xcategorical = [X(:,1) X(:,3:4) X(:,6:12) X(:,14:end)];
-Xcontinuos = [X(:,2) X(:,5) X(:,13)]
+Xcontinuos = [X(:,2) X(:,5) X(:,13)];
 textp = text';
 Xcategoricallabels = [textp(:,2) textp(:,4:5) textp(:,7:13) textp(:,15:end)]';
 Y = M(:,1);
@@ -101,9 +101,11 @@ xlim([0 5]);
 
 %% EXPLORATORY DATA ANALYSIS
 %Correlation matrix
-r = corrcoef(X)
-hmo = HeatMap(r,'Colormap',redbluecmap, 'COLUMNLABELS',text(2:end),'ROWLABELS',text(2:end))
-
+r = corrcoef(X);
+hmo = HeatMap(r,'Colormap',redbluecmap, 'COLUMNLABELS',text(2:end),'ROWLABELS',text(2:end));
+%It exist an important correlation between Amount of the credit and
+%duration. It leads future researchs for a posible multicollineality
+%problem. But there isn't a big problem with this fact
 %% PEARSON CHI SQUEARED TEST CATEGORICAL PREDICTORS
 
 pvalueCP = zeros(size(Xcategorical,2),1);
@@ -115,16 +117,19 @@ end
 
 Xscatter=[1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17];
 figure
-scatter(Xscatter,pvalueCP)
+scatter(Xscatter,pvalueCP);
 %set(gca,'xtick',[1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17])
 %set(gca,'xticklabel',Xcategoricallabels)
 %set(gca,'XTickLabelRotation',45)
 ylabel('pvalue')
 hold on
-hline = refline([0 0.05]);
+hline = refline([0 0.1]);
 hline.Color = 'r';
 table(Xscatter',pvalueCP,'RowNames',Xcategoricallabels)
+gname(Xcategoricallabels) %I can name the dots in the scatter plot
 
+XselectedColumns = find(pvalueCP<0.1); %indices of columns selected as predictors from Xcategorical
+Xselected = [Xcategorical(:,1:5) Xcategorical(:,7:8) Xcategorical(:,10:12) Xcategorical(:,17)];
 %% CORRELATION CONTINUOUS VARIABLES
 
 pvalueCV = zeros(3,1);
@@ -133,3 +138,38 @@ for i=1:3;
     mdl = fitlm(Xcontinuos(:,i),Y);
     pvalueCV(i) = mdl.Coefficients.pValue(2);
 end
+
+%% LOADING TRAINING DATA
+
+training = xlsread ('Training50xls.xlsx','(A3:U502)');
+Ytraining = training(:,1);
+%the selection of the data is based in the results of the chi-square test
+%Queda afuera: Installment, Duration in current adress, Concurrent
+%credits,Occupation, no of dependants and telephone.
+%
+Xslected_training = [training(:,2) training(:,4:5) training(:,7:8) training(:,10:11) training(:,13) training(:,16:17) training(:,21)];
+Xcontinuos_training = [training(:,3) training(:,6) training(:,14)];
+%% PREDICTION
+% Logistic regression TRAINING
+%We make a simple partition 50:50
+LogisticMDL = GeneralizedLinearModel.fit([Xslected_training Xcontinuos_training],Ytraining,'CategoricalVars',logical([1 1 1 1 1 1 1 1 1 1 1 0 0 0]) ,'Distribution','binomial')
+%Given the p-value we have to select which variables to remove (but we have
+%to remove all the dummy variables)
+%We select the variables in the excel sheet "Logistic Training"
+%% Second Training
+% We train again the model only we the variables selected
+training2 = xlsread ('Training2.xlsx','(A3:L502)');
+Ytraining2 = training2(:,1);
+Xtraining2 = training2(:,2:end);
+LogisticMDL2 = GeneralizedLinearModel.fit(Xtraining2,Ytraining2,'CategoricalVars',logical([1 1 1 1 1 1 1 1 1 0 0]) ,'Distribution','binomial')
+%% Final model trained
+% Logistic regression Training
+training3 = xlsread('Training3.xlsx','(A3:J502)');
+Ytraining3 = training3(:,1);
+Xtraining3 = training3(:,2:end);
+LogisticMDLtest = GeneralizedLinearModel.fit(Xtraining3,Ytraining3,'CategoricalVars',logical([1 1 1 1 1 1 1 0 0]) ,'Distribution','binomial')
+
+%% Testing
+test = xlsread('Test50.xlsx', '(A3:J502)');
+Xtest = test(:,2:end);
+ypred = predict(LogisticMDLtest,Xtest);
